@@ -137,12 +137,12 @@ function renderHome() {
     <div class="section-subtitle">Kies een onderdeel om mee te oefenen</div>
     <div class="card-grid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr));">
       ${[
-        { icon:'🔤', title:'Alfabet & Uitspraak', desc:'Leer de 29 letters en moeilijke klanken', page:'alphabet' },
-        { icon:'🃏', title:'Flashcards', desc:'Oefen woordenschat met flip-kaarten', page:'vocabulary' },
-        { icon:'📝', title:'Grammatica', desc:'Regels, uitleg en oefeningen', page:'grammar' },
-        { icon:'💬', title:'Zinnen', desc:'Handige zinnen per situatie', page:'sentences' },
-        { icon:'📊', title:'Voortgang', desc:'Bekijk je statistieken', page:'progress' }
-      ].map(item => `
+      { icon: '🔤', title: 'Alfabet & Uitspraak', desc: 'Leer de 29 letters en moeilijke klanken', page: 'alphabet' },
+      { icon: '🃏', title: 'Flashcards', desc: 'Oefen woordenschat met flip-kaarten', page: 'vocabulary' },
+      { icon: '📝', title: 'Grammatica', desc: 'Regels, uitleg en oefeningen', page: 'grammar' },
+      { icon: '💬', title: 'Zinnen', desc: 'Handige zinnen per situatie', page: 'sentences' },
+      { icon: '📊', title: 'Voortgang', desc: 'Bekijk je statistieken', page: 'progress' }
+    ].map(item => `
         <div class="lesson-card" onclick="navigate('${item.page}')">
           <span class="lesson-icon">${item.icon}</span>
           <div class="lesson-title">${item.title}</div>
@@ -156,9 +156,9 @@ function renderHome() {
       <div class="section-subtitle">Georganiseerd van basis tot B1</div>
       <div class="card-grid">
         ${state.vocabData ? state.vocabData.lessons.map(lesson => {
-          const wordCount = lesson.words ? lesson.words.length : 0;
-          const completed = state.stats.lessonsCompleted.includes(lesson.id);
-          return `
+      const wordCount = lesson.words ? lesson.words.length : 0;
+      const completed = state.stats.lessonsCompleted.includes(lesson.id);
+      return `
             <div class="lesson-card ${completed ? 'completed' : ''}" onclick="navigate('lesson', '${lesson.id}')">
               <span class="lesson-icon">${lesson.icon}</span>
               <div class="lesson-title">${lesson.title}</div>
@@ -170,7 +170,7 @@ function renderHome() {
               </div>
             </div>
           `;
-        }).join('') : ''}
+    }).join('') : ''}
       </div>
     </div>
   `;
@@ -204,7 +204,7 @@ function renderAlphabet() {
 
 function renderAlphabetLetters(lesson) {
   if (!lesson) return '<p>Data laden...</p>';
-  const special = ['Å','Ä','Ö'];
+  const special = ['Å', 'Ä', 'Ö'];
   return `
     <div class="alphabet-grid">
       ${lesson.alphabet.map(item => `
@@ -247,7 +247,8 @@ function switchAlphabetTab(tab, btn) {
             `).join('')}
           </div>
         </div>
-      `).join('')` : '';
+      `).join('')}
+    ` : '';
   } else if (tab === 'practice') {
     const words = lesson ? lesson.alphabet.slice(0, 10).map(a => ({
       sv: a.example, nl: a.translation, example: a.example, exampleNl: a.translation
@@ -314,7 +315,7 @@ function handleSearch(query) {
     if (!lesson.words) return;
     lesson.words.forEach(word => {
       if (word.sv.toLowerCase().includes(state.searchQuery) ||
-          word.nl.toLowerCase().includes(state.searchQuery)) {
+        word.nl.toLowerCase().includes(state.searchQuery)) {
         allWords.push({ ...word, lessonTitle: lesson.title });
       }
     });
@@ -426,12 +427,12 @@ function buildFlashcardHTML() {
     <div class="flashcard-container">
       <div class="flashcard-progress">
         ${fc.words.map((_, i) => {
-          let cls = '';
-          if (fc.known.includes(i)) cls = 'known';
-          else if (fc.unknown.includes(i)) cls = 'unknown';
-          else if (i === fc.index) cls = 'current';
-          return `<div class="progress-dot ${cls}"></div>`;
-        }).join('')}
+    let cls = '';
+    if (fc.known.includes(i)) cls = 'known';
+    else if (fc.unknown.includes(i)) cls = 'unknown';
+    else if (i === fc.index) cls = 'current';
+    return `<div class="progress-dot ${cls}"></div>`;
+  }).join('')}
       </div>
 
       <p style="color:var(--text-muted);font-size:0.85rem;">${fc.index + 1} / ${total} — Klik op de kaart om te draaien</p>
@@ -509,7 +510,7 @@ function markCard(known) {
   fc.flipped = false;
 
   const content = document.getElementById('lesson-content') ||
-                  document.getElementById('alphabet-content');
+    document.getElementById('alphabet-content');
   if (content) {
     if (fc.index >= fc.words.length) {
       content.innerHTML = renderFlashcardResults();
@@ -528,7 +529,7 @@ function renderFlashcardResults() {
 
   // Mark lesson complete if >70%
   if (pct >= 70 && state.currentLesson &&
-      !state.stats.lessonsCompleted.includes(state.currentLesson)) {
+    !state.stats.lessonsCompleted.includes(state.currentLesson)) {
     state.stats.lessonsCompleted.push(state.currentLesson);
     updateStreak();
     saveStats();
@@ -939,42 +940,54 @@ function buildGrammarResults(topic) {
 
 // ========== SENTENCES ==========
 const SENTENCES = [
-  { category: 'Begroetingen', items: [
-    { sv: 'Hej, hur mår du?', nl: 'Hallo, hoe gaat het?' },
-    { sv: 'Jag mår bra, tack!', nl: 'Ik ga goed, bedankt!' },
-    { sv: 'Trevligt att träffas!', nl: 'Leuk je te ontmoeten!' },
-    { sv: 'Vi ses imorgon.', nl: 'We zien elkaar morgen.' },
-  ]},
-  { category: 'Restaurant', items: [
-    { sv: 'Kan jag få menyn, tack?', nl: 'Mag ik het menu, alsjeblieft?' },
-    { sv: 'Jag är vegetarian.', nl: 'Ik ben vegetariër.' },
-    { sv: 'Det var mycket gott!', nl: 'Dat was erg lekker!' },
-    { sv: 'Kan vi få notan?', nl: 'Kunnen we de rekening krijgen?' },
-  ]},
-  { category: 'Reizen', items: [
-    { sv: 'Var är närmaste tunnelbanestation?', nl: 'Waar is het dichtstbijzijnde metrostation?' },
-    { sv: 'Hur mycket kostar en biljett?', nl: 'Hoeveel kost een kaartje?' },
-    { sv: 'Jag är förlorad. Kan du hjälpa mig?', nl: 'Ik ben verdwaald. Kun jij me helpen?' },
-    { sv: 'Tåget är försenat.', nl: 'De trein heeft vertraging.' },
-  ]},
-  { category: 'Winkelen', items: [
-    { sv: 'Hur mycket kostar det?', nl: 'Hoeveel kost dat?' },
-    { sv: 'Har ni det i en annan storlek?', nl: 'Heeft u dit in een andere maat?' },
-    { sv: 'Jag betalar med kort.', nl: 'Ik betaal met kaart.' },
-    { sv: 'Kan jag lämna tillbaka det?', nl: 'Kan ik dit terugbrengen?' },
-  ]},
-  { category: 'Noodgevallen', items: [
-    { sv: 'Ring ambulansen!', nl: 'Bel de ambulance!' },
-    { sv: 'Jag behöver läkare.', nl: 'Ik heb een dokter nodig.' },
-    { sv: 'Ring polisen!', nl: 'Bel de politie!' },
-    { sv: 'Hjälp!', nl: 'Help!' },
-  ]},
-  { category: 'Werk', items: [
-    { sv: 'Jag jobbar hemifrån idag.', nl: 'Ik werk vandaag vanuit huis.' },
-    { sv: 'Vi har möte klockan tio.', nl: 'We hebben een vergadering om tien uur.' },
-    { sv: 'Kan du skicka mig rapporten?', nl: 'Kun jij me het rapport sturen?' },
-    { sv: 'Jag söker jobb.', nl: 'Ik ben op zoek naar werk.' },
-  ]},
+  {
+    category: 'Begroetingen', items: [
+      { sv: 'Hej, hur mår du?', nl: 'Hallo, hoe gaat het?' },
+      { sv: 'Jag mår bra, tack!', nl: 'Ik ga goed, bedankt!' },
+      { sv: 'Trevligt att träffas!', nl: 'Leuk je te ontmoeten!' },
+      { sv: 'Vi ses imorgon.', nl: 'We zien elkaar morgen.' },
+    ]
+  },
+  {
+    category: 'Restaurant', items: [
+      { sv: 'Kan jag få menyn, tack?', nl: 'Mag ik het menu, alsjeblieft?' },
+      { sv: 'Jag är vegetarian.', nl: 'Ik ben vegetariër.' },
+      { sv: 'Det var mycket gott!', nl: 'Dat was erg lekker!' },
+      { sv: 'Kan vi få notan?', nl: 'Kunnen we de rekening krijgen?' },
+    ]
+  },
+  {
+    category: 'Reizen', items: [
+      { sv: 'Var är närmaste tunnelbanestation?', nl: 'Waar is het dichtstbijzijnde metrostation?' },
+      { sv: 'Hur mycket kostar en biljett?', nl: 'Hoeveel kost een kaartje?' },
+      { sv: 'Jag är förlorad. Kan du hjälpa mig?', nl: 'Ik ben verdwaald. Kun jij me helpen?' },
+      { sv: 'Tåget är försenat.', nl: 'De trein heeft vertraging.' },
+    ]
+  },
+  {
+    category: 'Winkelen', items: [
+      { sv: 'Hur mycket kostar det?', nl: 'Hoeveel kost dat?' },
+      { sv: 'Har ni det i en annan storlek?', nl: 'Heeft u dit in een andere maat?' },
+      { sv: 'Jag betalar med kort.', nl: 'Ik betaal met kaart.' },
+      { sv: 'Kan jag lämna tillbaka det?', nl: 'Kan ik dit terugbrengen?' },
+    ]
+  },
+  {
+    category: 'Noodgevallen', items: [
+      { sv: 'Ring ambulansen!', nl: 'Bel de ambulance!' },
+      { sv: 'Jag behöver läkare.', nl: 'Ik heb een dokter nodig.' },
+      { sv: 'Ring polisen!', nl: 'Bel de politie!' },
+      { sv: 'Hjälp!', nl: 'Help!' },
+    ]
+  },
+  {
+    category: 'Werk', items: [
+      { sv: 'Jag jobbar hemifrån idag.', nl: 'Ik werk vandaag vanuit huis.' },
+      { sv: 'Vi har möte klockan tio.', nl: 'We hebben een vergadering om tien uur.' },
+      { sv: 'Kan du skicka mig rapporten?', nl: 'Kun jij me het rapport sturen?' },
+      { sv: 'Jag söker jobb.', nl: 'Ik ben op zoek naar werk.' },
+    ]
+  },
 ];
 
 function renderSentences() {
@@ -1059,8 +1072,8 @@ function renderProgress_page() {
     <div class="card" style="margin-bottom:24px;">
       <div style="font-weight:700;color:var(--navy);margin-bottom:16px;">Lessen overzicht</div>
       ${state.vocabData.lessons.map(lesson => {
-        const done = stats.lessonsCompleted.includes(lesson.id);
-        return `
+    const done = stats.lessonsCompleted.includes(lesson.id);
+    return `
           <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--gray-light);">
             <span style="font-size:1.4rem;">${lesson.icon}</span>
             <span style="font-weight:600;color:var(--navy);flex:1;">${lesson.title}</span>
@@ -1068,7 +1081,7 @@ function renderProgress_page() {
             <span style="color:${done ? 'var(--success)' : 'var(--gray)'};font-size:1.2rem;">${done ? '✓' : '○'}</span>
           </div>
         `;
-      }).join('')}
+  }).join('')}
     </div>` : ''}
 
     <div style="text-align:center;margin-top:24px;">
