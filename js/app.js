@@ -36,15 +36,31 @@ async function init() {
 }
 
 async function loadData() {
+  // Resolve base path dynamically — works on root AND in a subdir like /LagomLingua/
+  const base = location.href.endsWith('/')
+    ? location.href
+    : location.href.replace(/\/[^/]*$/, '/');
+
   try {
     const [vocabRes, grammarRes] = await Promise.all([
-      fetch('data/vocabulary.json'),
-      fetch('data/grammar.json')
+      fetch(base + 'data/vocabulary.json'),
+      fetch(base + 'data/grammar.json')
     ]);
+
+    if (!vocabRes.ok) throw new Error('vocabulary.json: ' + vocabRes.status + ' ' + vocabRes.statusText);
+    if (!grammarRes.ok) throw new Error('grammar.json: ' + grammarRes.status + ' ' + grammarRes.statusText);
+
     state.vocabData = await vocabRes.json();
     state.grammarData = await grammarRes.json();
   } catch (e) {
     console.error('Error loading data:', e);
+    document.getElementById('main').innerHTML =
+      '<div style="text-align:center;padding:60px 24px;">' +
+      '<div style="font-size:2.5rem;margin-bottom:16px;">⚠️</div>' +
+      '<div style="font-size:1.1rem;font-weight:700;color:var(--navy);margin-bottom:8px;">Kon data niet laden</div>' +
+      '<div style="color:var(--text-muted);font-size:0.9rem;max-width:400px;margin:0 auto 24px;">' +
+      e.message + '<br><br>Controleer of de data/ map correct is gedeployed naar GitHub Pages.</div>' +
+      '<button class="btn btn-primary" onclick="location.reload()">&#8635; Probeer opnieuw</button></div>';
   }
 }
 
