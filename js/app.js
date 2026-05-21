@@ -147,7 +147,7 @@ function renderHome() {
           <span class="lesson-icon">${item.icon}</span>
           <div class="lesson-title">${item.title}</div>
           <div class="lesson-desc">${item.desc}</div>
-        </div>
+        </div>ß
       `).join('')}
     </div>
 
