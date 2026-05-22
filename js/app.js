@@ -41,17 +41,52 @@ async function loadData() {
     ? location.href
     : location.href.replace(/\/[^/]*$/, '/');
 
+  // Vocabulary lesson files — add new filenames here when you add a lesson
+  const VOCAB_FILES = [
+    'alphabet', 'greetings', 'numbers', 'colors', 'family',
+    'food', 'body', 'clothes', 'house', 'work',
+    'travel', 'shopping', 'restaurant', 'weather', 'hobbies',
+    'nature', 'health', 'emotions', 'verbs', 'adjectives',
+    'directions', 'dailyroutines', 'opinion'
+  ];
+
+  // Grammar topic files — add new filenames here when you add a grammar topic
+  const GRAMMAR_FILES = [
+    'adjectives', 'lidwoorden', 'plural', 'pronouns',
+    'questions', 'verbpast', 'verbpresent', 'wordorder'
+  ];
+
+  // Helper: fetch a list of JSON files from a base path, skip missing ones gracefully
+  async function fetchJsonFiles(files, basePath) {
+    const responses = await Promise.all(
+      files.map(name => fetch(base + basePath + name + '.json'))
+    );
+    const results = [];
+    for (let i = 0; i < responses.length; i++) {
+      const res = responses[i];
+      if (!res.ok) {
+        console.warn('Skipping missing file:', basePath + files[i] + '.json');
+        continue;
+      }
+      try {
+        results.push(await res.json());
+      } catch (parseErr) {
+        console.warn('Could not parse:', basePath + files[i] + '.json', parseErr);
+      }
+    }
+    return results;
+  }
+
   try {
-    const [vocabRes, grammarRes] = await Promise.all([
-      fetch(base + 'data/vocabulary.json'),
-      fetch(base + 'data/grammar.json')
+    const [vocabLessons, grammarTopics] = await Promise.all([
+      fetchJsonFiles(VOCAB_FILES, 'data/lessons/vocabulary/'),
+      fetchJsonFiles(GRAMMAR_FILES, 'data/lessons/grammar/')
     ]);
 
-    if (!vocabRes.ok) throw new Error('vocabulary.json: ' + vocabRes.status + ' ' + vocabRes.statusText);
-    if (!grammarRes.ok) throw new Error('grammar.json: ' + grammarRes.status + ' ' + grammarRes.statusText);
+    // Same shapes the rest of the app expects
+    state.vocabData = { lessons: vocabLessons };
+    state.grammarData = { topics: grammarTopics };
 
-    state.vocabData = await vocabRes.json();
-    state.grammarData = await grammarRes.json();
   } catch (e) {
     console.error('Error loading data:', e);
     document.getElementById('main').innerHTML =
@@ -59,7 +94,7 @@ async function loadData() {
       '<div style="font-size:2.5rem;margin-bottom:16px;">⚠️</div>' +
       '<div style="font-size:1.1rem;font-weight:700;color:var(--navy);margin-bottom:8px;">Kon data niet laden</div>' +
       '<div style="color:var(--text-muted);font-size:0.9rem;max-width:400px;margin:0 auto 24px;">' +
-      e.message + '<br><br>Controleer of de data/ map correct is gedeployed naar GitHub Pages.</div>' +
+      e.message + '<br><br>Controleer of de data/lessons/ map correct is gedeployed naar GitHub Pages.</div>' +
       '<button class="btn btn-primary" onclick="location.reload()">&#8635; Probeer opnieuw</button></div>';
   }
 }
