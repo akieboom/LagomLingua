@@ -7,6 +7,7 @@ const state = {
   page: 'home',
   vocabData: null,
   grammarData: null,
+  sentencesData: null,
   currentLesson: null,
   currentTopic: null,
   flashcard: {
@@ -77,15 +78,23 @@ async function loadData() {
     return results;
   }
 
+  // Sentences category files — add new filenames here when you add a category
+  const SENTENCES_FILES = [
+    'greetings', 'restaurant', 'travel', 'shopping',
+    'emergencies', 'work', 'smalltalk', 'health'
+  ];
+
   try {
-    const [vocabLessons, grammarTopics] = await Promise.all([
+    const [vocabLessons, grammarTopics, sentenceCategories] = await Promise.all([
       fetchJsonFiles(VOCAB_FILES, 'data/lessons/vocabulary/'),
-      fetchJsonFiles(GRAMMAR_FILES, 'data/lessons/grammar/')
+      fetchJsonFiles(GRAMMAR_FILES, 'data/lessons/grammar/'),
+      fetchJsonFiles(SENTENCES_FILES, 'data/lessons/sentences/')
     ]);
 
     // Same shapes the rest of the app expects
     state.vocabData = { lessons: vocabLessons };
     state.grammarData = { topics: grammarTopics };
+    state.sentencesData = { categories: sentenceCategories };
 
   } catch (e) {
     console.error('Error loading data:', e);
@@ -974,59 +983,10 @@ function buildGrammarResults(topic) {
 }
 
 // ========== SENTENCES ==========
-const SENTENCES = [
-  {
-    category: 'Begroetingen', items: [
-      { sv: 'Hej, hur mår du?', nl: 'Hallo, hoe gaat het?' },
-      { sv: 'Jag mår bra, tack!', nl: 'Ik ga goed, bedankt!' },
-      { sv: 'Trevligt att träffas!', nl: 'Leuk je te ontmoeten!' },
-      { sv: 'Vi ses imorgon.', nl: 'We zien elkaar morgen.' },
-    ]
-  },
-  {
-    category: 'Restaurant', items: [
-      { sv: 'Kan jag få menyn, tack?', nl: 'Mag ik het menu, alsjeblieft?' },
-      { sv: 'Jag är vegetarian.', nl: 'Ik ben vegetariër.' },
-      { sv: 'Det var mycket gott!', nl: 'Dat was erg lekker!' },
-      { sv: 'Kan vi få notan?', nl: 'Kunnen we de rekening krijgen?' },
-    ]
-  },
-  {
-    category: 'Reizen', items: [
-      { sv: 'Var är närmaste tunnelbanestation?', nl: 'Waar is het dichtstbijzijnde metrostation?' },
-      { sv: 'Hur mycket kostar en biljett?', nl: 'Hoeveel kost een kaartje?' },
-      { sv: 'Jag är förlorad. Kan du hjälpa mig?', nl: 'Ik ben verdwaald. Kun jij me helpen?' },
-      { sv: 'Tåget är försenat.', nl: 'De trein heeft vertraging.' },
-    ]
-  },
-  {
-    category: 'Winkelen', items: [
-      { sv: 'Hur mycket kostar det?', nl: 'Hoeveel kost dat?' },
-      { sv: 'Har ni det i en annan storlek?', nl: 'Heeft u dit in een andere maat?' },
-      { sv: 'Jag betalar med kort.', nl: 'Ik betaal met kaart.' },
-      { sv: 'Kan jag lämna tillbaka det?', nl: 'Kan ik dit terugbrengen?' },
-    ]
-  },
-  {
-    category: 'Noodgevallen', items: [
-      { sv: 'Ring ambulansen!', nl: 'Bel de ambulance!' },
-      { sv: 'Jag behöver läkare.', nl: 'Ik heb een dokter nodig.' },
-      { sv: 'Ring polisen!', nl: 'Bel de politie!' },
-      { sv: 'Hjälp!', nl: 'Help!' },
-    ]
-  },
-  {
-    category: 'Werk', items: [
-      { sv: 'Jag jobbar hemifrån idag.', nl: 'Ik werk vandaag vanuit huis.' },
-      { sv: 'Vi har möte klockan tio.', nl: 'We hebben een vergadering om tien uur.' },
-      { sv: 'Kan du skicka mig rapporten?', nl: 'Kun jij me het rapport sturen?' },
-      { sv: 'Jag söker jobb.', nl: 'Ik ben op zoek naar werk.' },
-    ]
-  },
-];
-
 function renderSentences() {
   const main = document.getElementById('main');
+  const categories = state.sentencesData?.categories || [];
+
   main.innerHTML = `
     <div class="breadcrumb">
       <span class="breadcrumb-link" onclick="navigate('home')">Home</span>
@@ -1036,12 +996,14 @@ function renderSentences() {
     <div class="section-title">💬 Handige Zinnen</div>
     <div class="section-subtitle">Klik op 🔊 om de uitspraak te horen</div>
 
-    ${SENTENCES.map(cat => `
+    ${categories.length === 0
+      ? '<p style="color:var(--text-muted);text-align:center;padding:40px;">Geen zinnen gevonden.</p>'
+      : categories.map(cat => `
       <div style="margin-bottom:32px;">
         <h3 style="font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--navy);margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid var(--gold-pale);">
-          ${cat.category}
+          ${cat.icon || ''} ${cat.category}
         </h3>
-        ${cat.items.map(item => `
+        ${(cat.sentences || []).map(item => `
           <div class="sentence-card">
             <div class="sentence-sv">
               ${item.sv}
