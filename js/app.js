@@ -25,14 +25,6 @@ const state = {
     answered: false,
     done: false
   },
-  conversation: {
-    scenario: null,
-    node: null,
-    chosenPath: null,
-    stepCount: 0,
-    flipped: false,
-    answered: false
-  },
   stats: JSON.parse(localStorage.getItem('sv_stats') || '{"totalWords":0,"knownWords":[],"streak":0,"lastDate":"","lessonsCompleted":[]}'),
   searchQuery: ''
 };
@@ -66,9 +58,6 @@ async function loadData() {
     'questions', 'verbpast', 'verbpresent', 'wordorder'
   ];
 
-  // conversation topics - add conversations to the topic
-  const CONVERSATIONS_FILES = ['restaurant'];
-
   // Helper: fetch a list of JSON files from a base path, skip missing ones gracefully
   async function fetchJsonFiles(files, basePath) {
     const responses = await Promise.all(
@@ -96,19 +85,23 @@ async function loadData() {
     'emergencies', 'work', 'smalltalk', 'health'
   ];
 
+  // Conversation scenario files — add new filenames here when you add a scenario
+  const CONVERSATIONS_FILES = [
+    'restaurant', 'hotel', 'shopping', 'introductie'
+  ];
+
   try {
-    const [vocabLessons, grammarTopics, sentenceCategories] = await Promise.all([
+    const [vocabLessons, grammarTopics, sentenceCategories, conversationScenarios] = await Promise.all([
       fetchJsonFiles(VOCAB_FILES, 'data/lessons/vocabulary/'),
       fetchJsonFiles(GRAMMAR_FILES, 'data/lessons/grammar/'),
       fetchJsonFiles(SENTENCES_FILES, 'data/lessons/sentences/'),
       fetchJsonFiles(CONVERSATIONS_FILES, 'data/lessons/conversations/')
     ]);
 
-    // Same shapes the rest of the app expects
     state.vocabData = { lessons: vocabLessons };
     state.grammarData = { topics: grammarTopics };
     state.sentencesData = { categories: sentenceCategories };
-    state.conversationsData = { scenarios: convScenarios };
+    state.conversationsData = { scenarios: conversationScenarios };
 
   } catch (e) {
     console.error('Error loading data:', e);
@@ -128,8 +121,8 @@ function navigate(page, data = null) {
   if (data) {
     if (page === 'lesson') state.currentLesson = data;
     if (page === 'grammar-topic') state.currentTopic = data;
+    if (page === 'conversation-play') state.currentConversation = data;
   }
-
 
   // Update nav buttons
   document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -147,9 +140,9 @@ function navigate(page, data = null) {
     lesson: renderLesson,
     grammar: renderGrammar,
     'grammar-topic': renderGrammarTopic,
-    conversations: renderConversations,
-    'conversation-scenario': renderConversationScenario,
     sentences: renderSentences,
+    conversations: renderConversations,
+    'conversation-play': renderConversationPlay,
     progress: renderProgress_page
   };
 
@@ -202,6 +195,7 @@ function renderHome() {
       { icon: '🃏', title: 'Flashcards', desc: 'Oefen woordenschat met flip-kaarten', page: 'vocabulary' },
       { icon: '📝', title: 'Grammatica', desc: 'Regels, uitleg en oefeningen', page: 'grammar' },
       { icon: '💬', title: 'Zinnen', desc: 'Handige zinnen per situatie', page: 'sentences' },
+      { icon: '🗣️', title: 'Gesprekken', desc: 'Scripted scenario\'s met keuzes', page: 'conversations' },
       { icon: '📊', title: 'Voortgang', desc: 'Bekijk je statistieken', page: 'progress' }
     ].map(item => `
         <div class="lesson-card" onclick="navigate('${item.page}')">
@@ -1189,11 +1183,12 @@ function setupMobileMenu() {
   }
 }
 
-// ========== GESPREKKEN (BRANCHING CONVERSATIONS) ==========
-
+// ========== CONVERSATIONS ==========
 function renderConversations() {
   const main = document.getElementById('main');
   const scenarios = state.conversationsData?.scenarios || [];
+
+  const levelColor = { A1: 'var(--green)', A2: 'var(--blue)', B1: 'var(--gold)' };
 
   main.innerHTML = `
     <div class="breadcrumb">
@@ -1201,282 +1196,238 @@ function renderConversations() {
       <span class="breadcrumb-sep">›</span>
       <span>Gesprekken</span>
     </div>
-    <div class="section-title">🗣️ Scenario-oefeningen</div>
-    <div class="section-subtitle">Kies een situatie en oefen een echt gesprek — elke keuze vertakt het gesprek anders!</div>
+    <div class="section-title">🗣️ Gesprekken oefenen</div>
+    <div class="section-subtitle">Kies een scenario, draai de kaart om en kies jouw reactie — elk keuze leidt naar een ander gesprek!</div>
 
     ${scenarios.length === 0
       ? '<p style="color:var(--text-muted);text-align:center;padding:40px;">Geen scenario\'s gevonden.</p>'
-      : `<div class="card-grid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr));">
+      : `<div class="card-grid" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr));margin-top:24px;">
           ${scenarios.map(s => `
-            <div class="lesson-card" onclick="navigate('conversation-scenario', ${JSON.stringify(s).replace(/"/g, '&quot;')})">
+            <div class="lesson-card" onclick="navigate('conversation-play', '${s.id}')">
               <span class="lesson-icon">${s.icon}</span>
               <div class="lesson-title">${s.title}</div>
               <div class="lesson-desc">${s.description}</div>
-              <div style="margin-top:10px;">
-                <span class="level-badge">${s.level}</span>
+              <div style="margin-top:12px;display:flex;gap:8px;align-items:center;">
+                <span style="font-size:0.75rem;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--gold-pale);color:var(--navy);">${s.level}</span>
+                <span style="font-size:0.75rem;color:var(--text-muted);">met ${s.npcAvatar} ${s.npcName}</span>
               </div>
             </div>
           `).join('')}
         </div>`
     }
-
-    <div class="card" style="margin-top:32px;background:var(--gold-pale);border:1px solid var(--gold);">
-      <div style="font-weight:700;color:var(--navy);margin-bottom:8px;">💡 Hoe werkt het?</div>
-      <div style="color:var(--text-muted);font-size:0.9rem;line-height:1.6;">
-        Je ziet een hint in het Nederlands — draai de kaart om om de drie Zweedse antwoordopties te zien.<br>
-        <strong>A</strong> = soepel antwoord &nbsp;·&nbsp; <strong>B</strong> = kleine verwarring &nbsp;·&nbsp; <strong>C</strong> = grappig misverstand<br>
-        Elke keuze vertakt het gesprek naar een ander pad!
-      </div>
-    </div>
   `;
 }
 
-function renderConversationScenario() {
-  const s = state.currentLesson; // reuse currentLesson slot for scenario data
-  if (!s || !s.tree) { navigate('conversations'); return; }
-
-  // Reset conversation state
-  state.conversation = {
-    scenario: s,
-    node: s.tree,
-    chosenPath: null,
-    stepCount: 0,
-    flipped: false,
-    answered: false
-  };
-
+function renderConversationPlay() {
   const main = document.getElementById('main');
+  const scenarios = state.conversationsData?.scenarios || [];
+  const scenario = scenarios.find(s => s.id === state.currentConversation);
+
+  if (!scenario) {
+    main.innerHTML = '<p style="padding:40px;text-align:center;color:var(--text-muted);">Scenario niet gevonden.</p>';
+    return;
+  }
+
   main.innerHTML = `
     <div class="breadcrumb">
       <span class="breadcrumb-link" onclick="navigate('home')">Home</span>
       <span class="breadcrumb-sep">›</span>
       <span class="breadcrumb-link" onclick="navigate('conversations')">Gesprekken</span>
       <span class="breadcrumb-sep">›</span>
-      <span>${s.title}</span>
+      <span>${scenario.title}</span>
     </div>
-
-    <div style="max-width:520px;margin:0 auto;">
-      <!-- Scenario header card -->
-      <div class="card" style="margin-bottom:16px;">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--gray-light);">
-          <div style="font-size:1.8rem;">${s.icon}</div>
-          <div style="flex:1;">
-            <div style="font-weight:700;font-size:1rem;color:var(--navy);">${s.title}</div>
-            <div style="font-size:0.8rem;color:var(--text-muted);" id="conv-path-label">Kies je eigen pad</div>
-          </div>
-          <div style="text-align:right;">
-            <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:4px;" id="conv-step-label">Stap 1 / ${s.totalSteps || 3}</div>
-            <div style="display:flex;gap:4px;justify-content:flex-end;" id="conv-dots"></div>
-          </div>
-        </div>
-
-        <!-- Chat log -->
-        <div id="conv-chat-log"></div>
-        <!-- Interaction area (flip card + options) -->
-        <div id="conv-interaction"></div>
-      </div>
-    </div>
+    <div id="conv-root" style="max-width:560px;margin:0 auto;padding-bottom:40px;"></div>
   `;
 
-  _convRenderNode(state.conversation.node);
-}
-
-// ── internal helpers ──────────────────────────────────────
-
-const _convTagColors = { a: '#1D9E75', b: '#7F77DD', c: '#EF9F27' };
-const _convMoodEnd = {
-  a: { bg: '#E1F5EE', tc: '#085041', label: 'Uitstekend! 🌟' },
-  b: { bg: '#EEEDFE', tc: '#3C3489', label: 'Goed gedaan! 👍' },
-  c: { bg: '#FAEEDA', tc: '#633806', label: 'Memorabel! 😄' }
-};
-
-function _convAddNpcBubble(sv, nl) {
-  const s = state.conversation.scenario;
-  const log = document.getElementById('conv-chat-log');
-  if (!log) return;
-  const d = document.createElement('div');
-  d.className = 'chat-bubble npc';
-  d.innerHTML = `
-    <div class="conv-avatar">${s.npcAvatar || '🧑'}</div>
-    <div class="conv-bnpc">
-      <span class="conv-sv">${sv}</span>
-      <span class="conv-nl">${nl}</span>
-    </div>`;
-  log.appendChild(d);
-  log.scrollTop = log.scrollHeight;
-}
-
-function _convAddPlayerBubble(sv, nl, tag) {
-  const log = document.getElementById('conv-chat-log');
-  if (!log) return;
-  const bg = tag === 'a' ? '#E1F5EE' : tag === 'b' ? '#EEEDFE' : '#FAEEDA';
-  const tc = tag === 'a' ? '#085041' : tag === 'b' ? '#3C3489' : '#633806';
-  const sc = tag === 'a' ? '#0F6E56' : tag === 'b' ? '#534AB7' : '#854F0B';
-  const d = document.createElement('div');
-  d.className = 'chat-bubble player';
-  d.innerHTML = `
-    <div class="conv-avatar">🧑</div>
-    <div class="conv-bplayer" style="background:${bg};color:${tc};">
-      <span style="font-weight:600;display:block;">${sv}</span>
-      <span style="display:block;font-size:0.75rem;margin-top:2px;color:${sc};">${nl}</span>
-    </div>`;
-  log.appendChild(d);
-  log.scrollTop = log.scrollHeight;
-}
-
-function _convAddPathBadge(tag, label) {
-  const log = document.getElementById('conv-chat-log');
-  if (!log || !label) return;
-  const d = document.createElement('div');
-  d.className = `conv-path-badge conv-path-${tag}`;
-  d.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:${_convTagColors[tag]};display:inline-block;flex-shrink:0;"></span> ${label}`;
-  log.appendChild(d);
-}
-
-function _convUpdateHeader() {
-  const cv = state.conversation;
-  const stepEl = document.getElementById('conv-step-label');
-  const pathEl = document.getElementById('conv-path-label');
-  const dotsEl = document.getElementById('conv-dots');
-  const total = cv.scenario?.totalSteps || 3;
-
-  if (stepEl) stepEl.textContent = `Stap ${Math.min(cv.stepCount + 1, total)} / ${total}`;
-  if (pathEl && cv.chosenPath) {
-    const labels = { a: 'Pad A — soepel gesprek', b: 'Pad B — kleine verwarring', c: 'Pad C — grappig misverstand' };
-    pathEl.textContent = labels[cv.chosenPath] || 'Kies je eigen pad';
-  }
-  if (dotsEl) {
-    dotsEl.innerHTML = Array.from({ length: total }, (_, i) => {
-      const cls = i < cv.stepCount
-        ? `conv-dot done-${cv.chosenPath || 'a'}`
-        : 'conv-dot';
-      return `<span class="${cls}"></span>`;
-    }).join('');
-  }
-}
-
-function _convRenderNode(node) {
-  if (!node) return;
-  const cv = state.conversation;
-  cv.flipped = false;
-  cv.answered = false;
-
-  const ia = document.getElementById('conv-interaction');
-  if (!ia) return;
-
-  if (cv.stepCount > 0) _convAddNpcBubble(node.npc.sv, node.npc.nl);
-  if (node.pathLabel) _convAddPathBadge(cv.chosenPath || 'a', node.pathLabel);
-  _convUpdateHeader();
-  ia.innerHTML = '';
-
-  const card = document.createElement('div');
-  card.className = 'conv-flip-card';
-  card.innerHTML = `
-    <div class="conv-flip-inner" id="conv-fi">
-      <!-- FRONT: hint in Dutch only -->
-      <div class="conv-flip-face conv-flip-front">
-        <div class="conv-your-turn-label">Jij reageert</div>
-        <div class="conv-your-turn-hint">${node.hint}</div>
-        <div class="conv-tap-hint">↩️ Draai om voor de opties</div>
-      </div>
-      <!-- BACK: Swedish options (Dutch hidden until chosen) -->
-      <div class="conv-flip-face conv-flip-back">
-        <div style="font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">Kies jouw antwoord in het Zweeds</div>
-        <div class="conv-options">
-          ${node.options.map((o, i) => `
-            <button class="conv-opt-btn" id="conv-ob-${i}" onclick="convChoose(${i})">
-              <span class="conv-opt-tag conv-tag-${o.tag}">${o.tag.toUpperCase()}</span>
-              <span>
-                <span class="conv-opt-sv">${o.sv}</span>
-                <span class="conv-opt-nl" id="conv-nl-${i}" style="display:none;">${o.nl}</span>
-              </span>
-            </button>`).join('')}
-        </div>
-      </div>
-    </div>`;
-
-  // Flip on card click (not on button click)
-  card.querySelector('#conv-fi').addEventListener('click', function (e) {
-    if (cv.answered || e.target.closest('.conv-opt-btn')) return;
-    if (!cv.flipped) {
-      this.classList.add('flipped');
-      cv.flipped = true;
-    }
-  });
-
-  ia.appendChild(card);
-
-  // First step: show NPC bubble after card renders
-  if (cv.stepCount === 0) _convAddNpcBubble(node.npc.sv, node.npc.nl);
-  cv.stepCount++;
-}
-
-function convChoose(i) {
-  const cv = state.conversation;
-  if (cv.answered || !cv.flipped) return;
-  cv.answered = true;
-
-  const opt = cv.node.options[i];
-  if (!cv.chosenPath) cv.chosenPath = opt.tag;
-
-  // Show chosen button styled + reveal Dutch translation on chosen option only
-  document.querySelectorAll('.conv-opt-btn').forEach((b, j) => {
-    b.disabled = true;
-    if (j === i) {
-      b.classList.add(`conv-chosen-${opt.tag}`);
-      const nlSpan = document.getElementById(`conv-nl-${j}`);
-      if (nlSpan) nlSpan.style.display = 'block';
-    }
-  });
-
-  _convAddPlayerBubble(opt.sv, opt.nl, opt.tag);
-
-  const next = opt.next;
-  if (next.isLeaf) {
-    setTimeout(() => _convRenderLeaf(next), 800);
-  } else {
-    cv.node = next;
-    setTimeout(() => _convRenderNode(cv.node), 900);
-  }
-}
-
-function _convRenderLeaf(leaf) {
-  const ia = document.getElementById('conv-interaction');
-  if (!ia) return;
-  const m = _convMoodEnd[leaf.mood] || _convMoodEnd.a;
-  ia.innerHTML = `
-    <div style="border-radius:12px;padding:20px;text-align:center;background:${m.bg};margin-top:8px;">
-      <div style="font-size:1.3rem;font-weight:700;color:${m.tc};margin-bottom:8px;">${m.label}</div>
-      <div style="font-size:0.875rem;color:${m.tc};opacity:0.85;line-height:1.6;margin-bottom:18px;">${leaf.msg}</div>
-      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
-        <button class="btn btn-primary" onclick="convRestart()">🔁 Opnieuw proberen</button>
-        <button class="btn btn-outline" onclick="navigate('conversations')">← Alle scenario's</button>
-      </div>
-    </div>`;
-
-  _convUpdateHeader();
-}
-
-function convRestart() {
-  const s = state.conversation.scenario;
-  if (!s) { navigate('conversations'); return; }
-  state.conversation = {
-    scenario: s,
-    node: s.tree,
-    chosenPath: null,
-    stepCount: 0,
-    flipped: false,
-    answered: false
+  // ── conversation engine ──────────────────────────────────
+  const root = document.getElementById('conv-root');
+  const tagColors = { a: '#1D9E75', b: '#7F77DD', c: '#EF9F27' };
+  const tagBg = { a: '#E1F5EE', b: '#EEEDFE', c: '#FAEEDA' };
+  const tagText = { a: '#085041', b: '#3C3489', c: '#633806' };
+  const tagSub = { a: '#0F6E56', b: '#534AB7', c: '#854F0B' };
+  const moodEnd = {
+    a: { bg: '#E1F5EE', tc: '#085041', label: 'Uitstekend! 🌟' },
+    b: { bg: '#EEEDFE', tc: '#3C3489', label: 'Goed gedaan! 👍' },
+    c: { bg: '#FAEEDA', tc: '#633806', label: 'Memorabel! 😄' }
   };
-  const log = document.getElementById('conv-chat-log');
-  const ia = document.getElementById('conv-interaction');
-  const pathEl = document.getElementById('conv-path-label');
-  if (log) log.innerHTML = '';
-  if (ia) ia.innerHTML = '';
-  if (pathEl) pathEl.textContent = 'Kies je eigen pad';
-  _convRenderNode(state.conversation.node);
+
+  let currentNode = scenario.tree;
+  let stepCount = 0;
+  let chosenPath = null;
+  let flipped = false;
+  let answered = false;
+
+  // header
+  const header = document.createElement('div');
+  header.style.cssText = 'display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--white);border-radius:var(--radius-lg);border:1px solid var(--border);margin-bottom:16px;';
+  header.innerHTML = `
+    <span style="font-size:1.6rem;">${scenario.icon}</span>
+    <div style="flex:1;">
+      <div style="font-weight:700;font-size:0.95rem;color:var(--navy);">${scenario.title}</div>
+      <div style="font-size:0.8rem;color:var(--text-muted);" id="path-label">Kies je eigen pad</div>
+    </div>
+    <div style="text-align:right;">
+      <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:4px;" id="step-label">Stap 1</div>
+    </div>`;
+  root.appendChild(header);
+
+  // chat log
+  const chatLog = document.createElement('div');
+  chatLog.id = 'chat-log';
+  root.appendChild(chatLog);
+
+  // interaction area
+  const ia = document.createElement('div');
+  ia.id = 'ia';
+  root.appendChild(ia);
+
+  function addNpcBubble(sv, nl) {
+    const d = document.createElement('div');
+    d.style.cssText = 'display:flex;gap:10px;margin-bottom:14px;align-items:flex-end;';
+    d.innerHTML = `
+      <div style="width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;background:var(--bg-subtle);border:1px solid var(--border);">${scenario.npcAvatar}</div>
+      <div style="max-width:78%;padding:10px 14px;border-radius:12px;border-bottom-left-radius:3px;background:#E1F5EE;color:#085041;">
+        <span style="font-weight:600;display:block;font-size:0.88rem;">${sv}</span>
+        <span style="font-size:0.75rem;color:#0F6E56;display:block;margin-top:3px;">${nl}</span>
+      </div>`;
+    chatLog.appendChild(d);
+    chatLog.scrollTop = chatLog.scrollHeight;
+  }
+
+  function addPlayerBubble(sv, nl, tag) {
+    const d = document.createElement('div');
+    d.style.cssText = 'display:flex;gap:10px;margin-bottom:14px;align-items:flex-end;flex-direction:row-reverse;';
+    d.innerHTML = `
+      <div style="width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;background:var(--bg-subtle);border:1px solid var(--border);">🧑</div>
+      <div style="max-width:78%;padding:10px 14px;border-radius:12px;border-bottom-right-radius:3px;background:${tagBg[tag]};color:${tagText[tag]};">
+        <span style="font-weight:600;display:block;font-size:0.88rem;">${sv}</span>
+        <span style="font-size:0.75rem;color:${tagSub[tag]};display:block;margin-top:3px;">${nl}</span>
+      </div>`;
+    chatLog.appendChild(d);
+    chatLog.scrollTop = chatLog.scrollHeight;
+  }
+
+  function addPathBadge(tag, label) {
+    const d = document.createElement('div');
+    d.style.cssText = `display:inline-flex;align-items:center;gap:6px;font-size:0.75rem;font-weight:600;padding:3px 10px;border-radius:20px;background:${tagBg[tag]};color:${tagText[tag]};margin:0 0 10px 44px;`;
+    d.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:${tagColors[tag]};display:inline-block;flex-shrink:0;"></span>${label}`;
+    chatLog.appendChild(d);
+  }
+
+  function renderNode(node) {
+    flipped = false;
+    answered = false;
+    if (stepCount > 0) addNpcBubble(node.npc.sv, node.npc.nl);
+    if (node.pathLabel) {
+      chosenPath = node.pathLabel;
+      document.getElementById('path-label').textContent = node.pathLabel;
+      addPathBadge(getTagFromPath(node), node.pathLabel);
+    }
+    document.getElementById('step-label').textContent = `Stap ${stepCount + 1}`;
+
+    ia.innerHTML = '';
+
+    // flip card
+    const card = document.createElement('div');
+    card.style.cssText = 'width:100%;perspective:900px;margin:4px 0 16px;cursor:pointer;';
+    card.innerHTML = `
+      <div id="fi" style="position:relative;transition:transform 0.4s;transform-style:preserve-3d;">
+        <div style="backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:12px;border:1px solid var(--border);background:var(--white);padding:22px 20px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:96px;">
+          <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px;">Jij reageert</div>
+          <div style="font-size:1rem;font-weight:600;color:var(--navy);line-height:1.4;">${node.hint}</div>
+          <div style="font-size:0.75rem;color:var(--text-muted);margin-top:12px;">🔄 Draai om voor de Zweedse opties</div>
+        </div>
+        <div id="flip-back" style="backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:12px;border:1px solid var(--border);background:var(--white);padding:16px;position:absolute;top:0;left:0;width:100%;box-sizing:border-box;transform:rotateY(180deg);">
+          <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:10px;">Kies jouw antwoord in het Zweeds</div>
+          <div id="opts" style="display:flex;flex-direction:column;gap:8px;">
+            ${node.options.map((o, i) => `
+              <button id="ob${i}" onclick="convAnswer(${i})" style="width:100%;text-align:left;padding:10px 13px;border-radius:8px;border:1px solid var(--border);background:var(--white);cursor:pointer;font-size:0.82rem;line-height:1.4;display:flex;align-items:flex-start;gap:9px;color:var(--navy);">
+                <span style="flex-shrink:0;width:19px;height:19px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:700;margin-top:1px;background:${tagBg[o.tag]};color:${tagText[o.tag]};">${o.tag.toUpperCase()}</span>
+                <span><span style="font-weight:600;display:block;">${o.sv}</span><span style="display:block;font-size:0.75rem;color:var(--text-muted);margin-top:2px;">${o.nl}</span></span>
+              </button>`).join('')}
+          </div>
+        </div>
+      </div>`;
+
+    const fi = card.querySelector('#fi');
+    fi.addEventListener('click', function (e) {
+      if (answered || e.target.closest('button')) return;
+      if (!flipped) {
+        this.style.transform = 'rotateY(180deg)';
+        // make back same height as front
+        const front = this.children[0];
+        const back = this.children[1];
+        back.style.position = 'relative';
+        front.style.position = 'absolute';
+        front.style.top = '0'; front.style.left = '0'; front.style.width = '100%';
+        flipped = true;
+      }
+    });
+
+    ia.appendChild(card);
+    if (stepCount === 0) addNpcBubble(node.npc.sv, node.npc.nl);
+    stepCount++;
+
+    // expose answer handler globally
+    window.convAnswer = function (i) {
+      if (answered || !flipped) return;
+      answered = true;
+      const opt = node.options[i];
+
+      document.querySelectorAll('[id^="ob"]').forEach((b, j) => {
+        b.disabled = true;
+        if (j === i) {
+          b.style.background = tagBg[opt.tag];
+          b.style.borderColor = tagColors[opt.tag];
+          b.style.color = tagText[opt.tag];
+        }
+      });
+
+      addPlayerBubble(opt.sv, opt.nl, opt.tag);
+
+      if (opt.next.isLeaf) {
+        setTimeout(() => renderLeafEnd(opt.next), 900);
+      } else {
+        currentNode = opt.next;
+        setTimeout(() => renderNode(currentNode), 1000);
+      }
+    };
+  }
+
+  function getTagFromPath(node) {
+    if (!node.pathLabel) return 'a';
+    const l = node.pathLabel.toLowerCase();
+    if (l.includes('b') || l.includes('verwar') || l.includes('zonder') || l.includes('rondkijk')) return 'b';
+    if (l.includes('c') || l.includes('grapp') || l.includes('creat') || l.includes('verkeer')) return 'c';
+    return 'a';
+  }
+
+  function renderLeafEnd(leaf) {
+    ia.innerHTML = '';
+    const m = moodEnd[leaf.mood] || moodEnd.b;
+    const div = document.createElement('div');
+    div.style.cssText = `border-radius:12px;padding:24px;text-align:center;background:${m.bg};margin-top:8px;`;
+    div.innerHTML = `
+      <div style="font-size:1.4rem;font-weight:700;color:${m.tc};margin-bottom:8px;">${m.label}</div>
+      <div style="font-size:0.9rem;color:${m.tc};opacity:0.9;line-height:1.6;margin-bottom:20px;">${leaf.msg}</div>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="restartConversation()">🔄 Opnieuw proberen</button>
+        <button class="btn btn-outline" onclick="navigate('conversations')">← Alle scenario's</button>
+      </div>`;
+    ia.appendChild(div);
+  }
+
+  window.restartConversation = function () {
+    currentNode = scenario.tree;
+    stepCount = 0;
+    chosenPath = null;
+    chatLog.innerHTML = '';
+    document.getElementById('path-label').textContent = 'Kies je eigen pad';
+    renderNode(currentNode);
+  };
+
+  renderNode(currentNode);
 }
 
 // ========== START ==========
 document.addEventListener('DOMContentLoaded', init);
-
